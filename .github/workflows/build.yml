@@ -28,8 +28,10 @@ jobs:
           echo "m_EditorVersion: 2020.3.25f1" > ProjectSettings/ProjectVersion.txt
           mkdir -p Assets/Managed
           cp AliceInCradle_Data/Managed/*.dll Assets/Managed/ 2>/dev/null || true
+          find Assets -name '*.cs' -type f -delete
           mkdir -p Assets/Patch && cp patch/*.cs Assets/Patch/
-          rm -rf r.tgz AliceInCradle_Data Assets/Scripts
+          echo '=== Assets 结构 ==='
+          find Assets -maxdepth 2 -type d
       - name: KillMosaic
         run: |
           mkdir -p /tmp/kill
