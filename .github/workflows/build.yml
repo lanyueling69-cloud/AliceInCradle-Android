@@ -15,13 +15,20 @@ jobs:
           git clone --depth 1 https://github.com/MeikoMei16/AssetRipper-CLI.git r
           cd r && dotnet build AssetRipperCLI.slnx -c Release && cd ..
           dotnet r/artifacts/bin/AssetRipper.Tools.ExportRunner/Release/net10.0/AssetRipper.Tools.ExportRunner.dll export ./AliceInCradle_Data --output ./ripped --profile full-project
+          echo "=== ripped 结构 ==="
+          find ripped -maxdepth 3 -type d
+          echo "=== 找 Assets ==="
+          A=$(find ripped -maxdepth 4 -name "Assets" -type d | head -1)
+          P=$(find ripped -maxdepth 4 -name "ProjectSettings" -type d | head -1)
+          K=$(find ripped -maxdepth 4 -name "Packages" -type d | head -1)
+          echo "A=$A P=$P K=$K"
           rm -rf Assets ProjectSettings Packages
-          cp -r ripped/Assets .
+          [ -n "$A" ] && cp -r "$A" . || mkdir -p Assets
+          [ -n "$P" ] && cp -r "$P" . || (git clone --depth 1 https://github.com/game-ci/unity-actions-example.git t && cp -r t/ProjectSettings . && rm -rf t)
+          [ -n "$K" ] && cp -r "$K" . || (git clone --depth 1 https://github.com/game-ci/unity-actions-example.git t2 && cp -r t2/Packages . && rm -rf t2)
+          echo "m_EditorVersion: 2020.3.25f1" > ProjectSettings/ProjectVersion.txt
           mkdir -p Assets/Managed
           cp AliceInCradle_Data/Managed/*.dll Assets/Managed/
-          git clone --depth 1 https://github.com/game-ci/unity-actions-example.git t
-          cp -r t/ProjectSettings . && cp -r t/Packages . && rm -rf t
-          echo "m_EditorVersion: 2020.3.25f1" > ProjectSettings/ProjectVersion.txt
           mkdir -p Assets/Patch && cp patch/*.cs Assets/Patch/
       - name: KillMosaic
         run: |
