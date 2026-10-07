@@ -54,6 +54,7 @@ jobs:
           androidTargetSdkVersion: 33
           androidMinSdkVersion: 28
           androidGraphicsAPIs: Vulkan,OpenGLES3
+          allowDirtyBuild: true
       - uses: actions/upload-artifact@v4
         with:
           name: AliceInCradle-APK
