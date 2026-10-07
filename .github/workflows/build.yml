@@ -29,7 +29,7 @@ jobs:
           mkdir -p Assets/Managed
           cp AliceInCradle_Data/Managed/*.dll Assets/Managed/ 2>/dev/null || true
           mkdir -p Assets/Patch && cp patch/*.cs Assets/Patch/
-          rm -rf r.tgz AliceInCradle_Data
+          rm -rf r.tgz AliceInCradle_Data Assets/Scripts
       - name: KillMosaic
         run: |
           mkdir -p /tmp/kill
