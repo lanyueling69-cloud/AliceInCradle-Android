@@ -33,7 +33,7 @@ jobs:
       - name: KillMosaic
         run: |
           cat > p.csproj << 'X'
-          <Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework></PropertyGroup><ItemGroup><PackageReference Include="dnlib" Version="4.4.0"/></ItemGroup></Project>
+          <Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup><ItemGroup><PackageReference Include="dnlib" Version="4.4.0"/><Compile Include="P.cs"/></ItemGroup></Project>
           X
           cat > P.cs << 'X'
           using System;using System.IO;using dnlib.DotNet;using dnlib.DotNet.Emit;
