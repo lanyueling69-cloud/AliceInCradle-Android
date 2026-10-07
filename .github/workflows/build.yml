@@ -1,0 +1,53 @@
+name: B
+on: [push, workflow_dispatch]
+jobs:
+  b:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cat raw_game_data.tar.gz.part_* > r.tgz && tar -xzf r.tgz
+      - uses: actions/setup-dotnet@v3
+        with: {dotnet-version: '10.0.x'}
+      - run: |
+          wget -q -O h.zip https://github.com/pardeike/Harmony/releases/download/v2.3.6.0/Harmony-Fat.2.3.6.0.zip
+          mkdir -p Assets/Managed
+          unzip -j h.zip "net48/0Harmony.dll" -d Assets/Managed/
+          git clone --depth 1 https://github.com/MeikoMei16/AssetRipper-CLI.git r
+          cd r && dotnet build AssetRipperCLI.slnx -c Release && cd ..
+          dotnet r/artifacts/bin/AssetRipper.Tools.ExportRunner/Release/net10.0/AssetRipper.Tools.ExportRunner.dll export ./AliceInCradle_Data --output ./ripped --profile assets-only
+          rm -rf Assets ProjectSettings Packages
+          cp -r ripped/Assets .
+          mkdir -p Assets/Managed
+          cp AliceInCradle_Data/Managed/*.dll Assets/Managed/
+          git clone --depth 1 https://github.com/game-ci/unity-actions-example.git t
+          cp -r t/ProjectSettings . && cp -r t/Packages . && rm -rf t
+          echo "m_EditorVersion: 2020.3.25f1" > ProjectSettings/ProjectVersion.txt
+          mkdir -p Assets/Patch && cp patch/*.cs Assets/Patch/
+      - name: KillMosaic
+        run: |
+          cat > p.csproj << 'X'
+          <Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework></PropertyGroup><ItemGroup><PackageReference Include="dnlib" Version="4.4.0"/></ItemGroup></Project>
+          X
+          cat > P.cs << 'X'
+          using System;using System.IO;using dnlib.DotNet;using dnlib.DotNet.Emit;
+          class P{static void Main(){string d="Assets/Managed/Assembly-CSharp.dll";if(!File.Exists(d)){Console.WriteLine("NO DLL");return;}var m=ModuleDefMD.Load(d);int c=0;foreach(var t in m.GetTypes())foreach(var me in t.Methods){if(!me.HasBody||me.Name.String.IndexOf("Mosaic",StringComparison.OrdinalIgnoreCase)<0)continue;Console.WriteLine("Kill: "+t.FullName+"."+me.Name);me.Body.Instructions.Clear();if(me.ReturnType.FullName=="System.Boolean")me.Body.Instructions.Add(Instruction.Create(OpCodes.Ldc_I4_0));me.Body.Instructions.Add(Instruction.Create(OpCodes.Ret));c++;}m.Write(d);Console.WriteLine("Total: "+c);}}
+          X
+          dotnet run --project p.csproj 2>&1 | tail -10
+      - uses: game-ci/unity-builder@v4
+        timeout-minutes: 180
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: Android
+          unityVersion: 2020.3.25f1
+          androidExportType: androidPackage
+          managedStrippingLevel: Disabled
+          androidTargetSdkVersion: 33
+          androidMinSdkVersion: 28
+          androidGraphicsAPIs: Vulkan,OpenGLES3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AliceInCradle-APK
+          path: build/Android/*.apk
