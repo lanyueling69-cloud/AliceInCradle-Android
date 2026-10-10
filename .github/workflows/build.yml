@@ -29,6 +29,18 @@ jobs:
           mkdir -p Assets/Managed
           cp AliceInCradle_Data/Managed/*.dll Assets/Managed/ 2>/dev/null || true
           find Assets \( -name '*.cs' -o -name '*.cs.meta' \) -type f -delete
+          # 彻底清理 AssetRipper 残留
+          rm -rf Assets/Scripts Assets/Editor Assets/Plugins
+          find Assets -name '*.cs' -type f -delete
+          find Assets -name '*.meta' -type f -delete
+          find Assets/Managed -name 'UnityEngine*.dll' -delete
+          find Assets/Managed -name 'Unity.*.dll' -delete
+          find Assets/Managed -name 'System.*.dll' -delete
+          find Assets/Managed -name 'mscorlib.dll' -delete
+          find Assets/Managed -name 'netstandard.dll' -delete
+          find Assets/Managed -name 'Mono.*.dll' -delete
+          echo "=== Managed 剩余 ==="
+          ls Assets/Managed/
           mkdir -p Assets/Patch && cp patch/*.cs Assets/Patch/
           echo '=== Assets 结构 ==='
           find Assets -maxdepth 2 -type d
