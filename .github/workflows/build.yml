@@ -54,11 +54,9 @@ jobs:
           targetPlatform: Android
           unityVersion: 2020.3.25f1
           androidExportType: androidPackage
-          managedStrippingLevel: Disabled
           allowDirtyBuild: true
+          customParameters: -managedStrippingLevel Disabled
           androidTargetSdkVersion: 33
-          androidMinSdkVersion: 28
-          androidGraphicsAPIs: Vulkan,OpenGLES3
       - uses: actions/upload-artifact@v4
         with:
           name: AliceInCradle-APK
