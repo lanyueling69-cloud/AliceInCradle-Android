@@ -41,9 +41,14 @@ jobs:
           find Assets/Managed -name 'Mono.*.dll' -delete
           echo "=== Managed 剩余 ==="
           ls Assets/Managed/
-          echo '{"dependencies":{"com.unity.ugui":"1.0.0","com.unity.textmeshpro":"3.0.6","com.unity.modules.ui":"1.0.0","com.unity.modules.uielements":"1.0.0","com.unity.modules.animation":"1.0.0","com.unity.modules.audio":"1.0.0","com.unity.modules.imageconversion":"1.0.0","com.unity.modules.physics":"1.0.0","com.unity.modules.physics2d":"1.0.0","com.unity.modules.unitywebrequest":"1.0.0","com.unity.modules.unitywebrequesttexture":"1.0.0","com.unity.modules.unitywebrequestwww":"1.0.0"}}' > Packages/manifest.json
+          echo '{"dependencies":{"com.unity.modules.ui":"1.0.0","com.unity.modules.uielements":"1.0.0","com.unity.modules.animation":"1.0.0","com.unity.modules.audio":"1.0.0","com.unity.modules.imageconversion":"1.0.0","com.unity.modules.physics":"1.0.0","com.unity.modules.physics2d":"1.0.0","com.unity.modules.unitywebrequest":"1.0.0","com.unity.modules.unitywebrequesttexture":"1.0.0","com.unity.modules.unitywebrequestwww":"1.0.0"}}' > Packages/manifest.json
           mkdir -p Assets/Plugins
-          mv Assets/Managed/0Harmony.dll Assets/Plugins/ 2>/dev/null || true
+          find Assets/Managed -name 'System*.dll' -delete
+          find Assets/Managed -name 'mscorlib*.dll' -delete
+          find Assets/Managed -name 'netstandard*.dll' -delete
+          find Assets/Managed -name 'Mono*.dll' -delete
+          find Assets/Managed -name 'Microsoft*.dll' -delete
+mv Assets/Managed/0Harmony.dll Assets/Plugins/ 2>/dev/null || true
           mkdir -p Assets/Patch && cp patch/*.cs Assets/Patch/
           echo '=== Assets 结构 ==='
           find Assets -maxdepth 2 -type d
