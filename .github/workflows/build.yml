@@ -7,62 +7,49 @@ jobs:
       - uses: actions/checkout@v4
       - run: cat raw_game_data.tar.gz.part_* > r.tgz && tar -xzf r.tgz
       - uses: actions/setup-dotnet@v3
-        with: {dotnet-version: '10.0.x'}
-      - run: |
+        with:
+          dotnet-version: '10.0.x'
+      - name: Prep
+        run: |
           wget -q -O /tmp/h.zip https://github.com/pardeike/Harmony/releases/download/v2.3.6.0/Harmony-Fat.2.3.6.0.zip
-          mkdir -p Assets/Managed
-          unzip -j /tmp/h.zip "net48/0Harmony.dll" -d Assets/Managed/
+          mkdir -p /tmp/harmony
+          unzip -j /tmp/h.zip "net48/0Harmony.dll" -d /tmp/harmony
           git clone --depth 1 https://github.com/MeikoMei16/AssetRipper-CLI.git /tmp/r
           cd /tmp/r && dotnet build AssetRipperCLI.slnx -c Release && cd -
           dotnet /tmp/r/artifacts/bin/AssetRipper.Tools.ExportRunner/Release/net10.0/AssetRipper.Tools.ExportRunner.dll export ./AliceInCradle_Data --output /tmp/ripped --profile full-project
-          echo "=== ripped dirs ==="
-          find /tmp/ripped -maxdepth 3 -type d
-          A=$(find /tmp/ripped -maxdepth 4 -name "Assets" -type d | head -1)
-          P=$(find /tmp/ripped -maxdepth 4 -name "ProjectSettings" -type d | head -1)
-          K=$(find /tmp/ripped -maxdepth 4 -name "Packages" -type d | head -1)
+          A=$(find /tmp/ripped -maxdepth 4 -name Assets -type d | head -1)
+          P=$(find /tmp/ripped -maxdepth 4 -name ProjectSettings -type d | head -1)
+          K=$(find /tmp/ripped -maxdepth 4 -name Packages -type d | head -1)
           echo "A=$A P=$P K=$K"
           rm -rf Assets ProjectSettings Packages
-          [ -n "$A" ] && cp -r "$A" . || mkdir -p Assets
-          [ -n "$P" ] && cp -r "$P" . || (git clone --depth 1 https://github.com/game-ci/unity-actions-example.git /tmp/t1 && cp -r /tmp/t1/ProjectSettings .)
-          [ -n "$K" ] && cp -r "$K" . || (git clone --depth 1 https://github.com/game-ci/unity-actions-example.git /tmp/t2 && cp -r /tmp/t2/Packages .)
+          if [ -n "$A" ]; then cp -r "$A" .; else mkdir -p Assets; fi
+          if [ -n "$P" ]; then cp -r "$P" .; else git clone --depth 1 https://github.com/game-ci/unity-actions-example.git /tmp/t1 && cp -r /tmp/t1/ProjectSettings . && rm -rf /tmp/t1; fi
+          if [ -n "$K" ]; then cp -r "$K" .; else git clone --depth 1 https://github.com/game-ci/unity-actions-example.git /tmp/t2 && cp -r /tmp/t2/Packages . && rm -rf /tmp/t2; fi
           echo "m_EditorVersion: 2020.3.25f1" > ProjectSettings/ProjectVersion.txt
-          mkdir -p Assets/Managed
-          cp AliceInCradle_Data/Managed/*.dll Assets/Managed/ 2>/dev/null || true
-          find Assets \( -name '*.cs' -o -name '*.cs.meta' \) -type f -delete
-          # 彻底清理 AssetRipper 残留
           rm -rf Assets/Scripts Assets/Editor Assets/Plugins
           find Assets -name '*.cs' -type f -delete
           find Assets -name '*.meta' -type f -delete
-          find Assets/Managed -name 'UnityEngine*.dll' -delete
-          find Assets/Managed -name 'Unity.*.dll' -delete
-          find Assets/Managed -name 'System.*.dll' -delete
-          find Assets/Managed -name 'mscorlib.dll' -delete
-          find Assets/Managed -name 'netstandard.dll' -delete
-          find Assets/Managed -name 'Mono.*.dll' -delete
-          echo "=== Managed 剩余 ==="
-          ls Assets/Managed/
-          echo '{"dependencies":{"com.unity.modules.ui":"1.0.0","com.unity.modules.uielements":"1.0.0","com.unity.modules.animation":"1.0.0","com.unity.modules.audio":"1.0.0","com.unity.modules.imageconversion":"1.0.0","com.unity.modules.physics":"1.0.0","com.unity.modules.physics2d":"1.0.0","com.unity.modules.unitywebrequest":"1.0.0","com.unity.modules.unitywebrequesttexture":"1.0.0","com.unity.modules.unitywebrequestwww":"1.0.0"}}' > Packages/manifest.json
+          mkdir -p Assets/Managed
+          cp AliceInCradle_Data/Managed/Assembly-CSharp.dll Assets/Managed/
+          cp AliceInCradle_Data/Managed/Assembly-CSharp-firstpass.dll Assets/Managed/ 2>/dev/null || true
+          find AliceInCradle_Data/Managed -maxdepth 1 -name 'Photon*.dll' -exec cp {} Assets/Managed/ \;
+          find AliceInCradle_Data/Managed -maxdepth 1 -name 'Fusion*.dll' -exec cp {} Assets/Managed/ \;
+          find AliceInCradle_Data/Managed -maxdepth 1 -name 'Spine*.dll' -exec cp {} Assets/Managed/ \;
+          find AliceInCradle_Data/Managed -maxdepth 1 -name 'better*.dll' -exec cp {} Assets/Managed/ \;
+          find AliceInCradle_Data/Managed -maxdepth 1 -name 'CriMw*.dll' -exec cp {} Assets/Managed/ \;
           mkdir -p Assets/Plugins
-          find Assets/Managed -name 'System*.dll' -delete
-          find Assets/Managed -name 'mscorlib*.dll' -delete
-          find Assets/Managed -name 'netstandard*.dll' -delete
-          find Assets/Managed -name 'Mono*.dll' -delete
-          find Assets/Managed -name 'Microsoft*.dll' -delete
-mv Assets/Managed/0Harmony.dll Assets/Plugins/ 2>/dev/null || true
-          mkdir -p Assets/Patch && cp patch/*.cs Assets/Patch/
-          echo '=== Assets 结构 ==='
-          find Assets -maxdepth 2 -type d
+          cp /tmp/harmony/0Harmony.dll Assets/Plugins/
+          mkdir -p Assets/Patch
+          cp patch/*.cs Assets/Patch/
+          echo '{"dependencies":{}}' > Packages/manifest.json
+          rm -rf r.tgz AliceInCradle_Data /tmp/ripped /tmp/r /tmp/h.zip /tmp/harmony
       - name: KillMosaic
         run: |
           mkdir -p /tmp/kill
-          cat > /tmp/kill/p.csproj << 'X'
-          <Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup><ItemGroup><PackageReference Include="dnlib" Version="4.4.0"/><Compile Include="P.cs"/></ItemGroup></Project>
-          X
-          cat > /tmp/kill/P.cs << 'X'
-          using System;using System.IO;using dnlib.DotNet;using dnlib.DotNet.Emit;
-          class P{static void Main(){string d="Assets/Managed/Assembly-CSharp.dll";if(!File.Exists(d)){Console.WriteLine("NO DLL");return;}var m=ModuleDefMD.Load(d);int c=0;foreach(var t in m.GetTypes())foreach(var me in t.Methods){if(!me.HasBody||me.Name.String.IndexOf("Mosaic",StringComparison.OrdinalIgnoreCase)<0)continue;Console.WriteLine("Kill: "+t.FullName+"."+me.Name);me.Body.Instructions.Clear();if(me.ReturnType.FullName=="System.Boolean")me.Body.Instructions.Add(Instruction.Create(OpCodes.Ldc_I4_0));me.Body.Instructions.Add(Instruction.Create(OpCodes.Ret));c++;}m.Write(d);Console.WriteLine("Total: "+c);}}
-          X
-          cd /tmp/kill && dotnet run 2>&1 | tail -10
+          cd /tmp/kill
+          printf '%s\n' '<Project Sdk="Microsoft.NET.Sdk">' '<PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup>' '<ItemGroup><PackageReference Include="dnlib" Version="4.4.0"/><Compile Include="P.cs"/></ItemGroup>' '</Project>' > p.csproj
+          printf '%s\n' 'using System;using System.IO;using dnlib.DotNet;using dnlib.DotNet.Emit;' 'class P{static void Main(){string d="/root/AliceInCradle-Android/Assets/Managed/Assembly-CSharp.dll";if(!File.Exists(d)){Console.WriteLine("NO DLL");return;}var m=ModuleDefMD.Load(d);int c=0;foreach(var t in m.GetTypes())foreach(var me in t.Methods){if(!me.HasBody||me.Name.String.IndexOf("Mosaic",StringComparison.OrdinalIgnoreCase)<0)continue;Console.WriteLine("Kill: "+t.FullName+"."+me.Name);me.Body.Instructions.Clear();if(me.ReturnType.FullName=="System.Boolean")me.Body.Instructions.Add(Instruction.Create(OpCodes.Ldc_I4_0));me.Body.Instructions.Add(Instruction.Create(OpCodes.Ret));c++;}m.Write(d);Console.WriteLine("Total: "+c);}}' > P.cs
+          dotnet run 2>&1 | tail -10
           cd $GITHUB_WORKSPACE
       - uses: game-ci/unity-builder@v4
         timeout-minutes: 180
@@ -74,8 +61,8 @@ mv Assets/Managed/0Harmony.dll Assets/Plugins/ 2>/dev/null || true
           targetPlatform: Android
           unityVersion: 2020.3.25f1
           androidExportType: androidPackage
-          allowDirtyBuild: true
           androidTargetSdkVersion: 33
+          allowDirtyBuild: true
       - uses: actions/upload-artifact@v4
         with:
           name: AliceInCradle-APK
