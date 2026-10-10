@@ -28,7 +28,7 @@ jobs:
           echo "m_EditorVersion: 2020.3.25f1" > ProjectSettings/ProjectVersion.txt
           mkdir -p Assets/Managed
           cp AliceInCradle_Data/Managed/*.dll Assets/Managed/ 2>/dev/null || true
-          find Assets -name '*.cs' -type f -delete
+          find Assets \( -name '*.cs' -o -name '*.cs.meta' \) -type f -delete
           mkdir -p Assets/Patch && cp patch/*.cs Assets/Patch/
           echo '=== Assets 结构 ==='
           find Assets -maxdepth 2 -type d
