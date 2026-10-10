@@ -41,7 +41,7 @@ jobs:
           cp /tmp/harmony/0Harmony.dll Assets/Plugins/
           mkdir -p Assets/Patch
           cp patch/*.cs Assets/Patch/
-          echo '{"dependencies":{}}' > Packages/manifest.json
+          echo '{"dependencies":{"com.unity.ugui":"1.0.0"}}' > Packages/manifest.json
           rm -rf r.tgz AliceInCradle_Data /tmp/ripped /tmp/r /tmp/h.zip /tmp/harmony
       - name: KillMosaic
         run: |
