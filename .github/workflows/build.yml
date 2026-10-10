@@ -70,7 +70,6 @@ jobs:
           unityVersion: 2020.3.25f1
           androidExportType: androidPackage
           allowDirtyBuild: true
-          customParameters: -managedStrippingLevel Disabled
           androidTargetSdkVersion: 33
       - uses: actions/upload-artifact@v4
         with:
