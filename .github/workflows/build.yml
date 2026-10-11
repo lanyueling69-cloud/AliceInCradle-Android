@@ -5,12 +5,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: cat raw_game_data.tar.gz.part_* > r.tgz && tar -xzf r.tgz
+      - name: Free Space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: false
+          dotnet: false
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: false
       - uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '10.0.x'
       - name: Prep
         run: |
+          cat raw_game_data.tar.gz.part_* > r.tgz
+          tar -xzf r.tgz
           wget -q -O /tmp/h.zip https://github.com/pardeike/Harmony/releases/download/v2.3.6.0/Harmony-Fat.2.3.6.0.zip
           mkdir -p /tmp/harmony
           unzip -j /tmp/h.zip "net48/0Harmony.dll" -d /tmp/harmony
@@ -32,38 +43,69 @@ jobs:
           mkdir -p Assets/Managed
           cp AliceInCradle_Data/Managed/Assembly-CSharp.dll Assets/Managed/
           cp AliceInCradle_Data/Managed/Assembly-CSharp-firstpass.dll Assets/Managed/ 2>/dev/null || true
-          find AliceInCradle_Data/Managed -maxdepth 1 -name 'Photon*.dll' -exec cp {} Assets/Managed/ \;
-          find AliceInCradle_Data/Managed -maxdepth 1 -name 'Fusion*.dll' -exec cp {} Assets/Managed/ \;
-          find AliceInCradle_Data/Managed -maxdepth 1 -name 'Spine*.dll' -exec cp {} Assets/Managed/ \;
-          find AliceInCradle_Data/Managed -maxdepth 1 -name 'better*.dll' -exec cp {} Assets/Managed/ \;
-          find AliceInCradle_Data/Managed -maxdepth 1 -name 'CriMw*.dll' -exec cp {} Assets/Managed/ \;
+          for p in Photon Fusion Spine better CriMw; do
+            find AliceInCradle_Data/Managed -maxdepth 1 -name "${p}*.dll" -exec cp {} Assets/Managed/ \;
+          done
           mkdir -p Assets/Plugins
           cp /tmp/harmony/0Harmony.dll Assets/Plugins/
           mkdir -p Assets/Patch
           cp patch/*.cs Assets/Patch/
-          echo '{"dependencies":{"com.unity.ugui":"1.0.0"}}' > Packages/manifest.json
+          echo '{"dependencies":{"com.unity.ugui":"1.0.0","com.unity.modules.ui":"1.0.0","com.unity.modules.uielements":"1.0.0","com.unity.modules.imgui":"1.0.0","com.unity.modules.animation":"1.0.0","com.unity.modules.audio":"1.0.0","com.unity.modules.physics":"1.0.0","com.unity.modules.physics2d":"1.0.0"}}' > Packages/manifest.json
           rm -rf r.tgz AliceInCradle_Data /tmp/ripped /tmp/r /tmp/h.zip /tmp/harmony
+      - name: Write BuildScript
+        run: |
+          mkdir -p Assets/Editor
+          cat > Assets/Editor/BuildAndroid.cs << 'CSEOF'
+          using UnityEditor;
+          using UnityEngine;
+          using System.IO;
+          using System.Collections.Generic;
+          public class BuildAndroid {
+            public static void Build() {
+              Debug.Log("[BUILD] Start");
+              PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
+              PlayerSettings.SetScriptingBackend(BuildTargetGroup.Android, ScriptingImplementation.IL2CPP);
+              PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevel33;
+              PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel24;
+              List<string> scenes = new List<string>();
+              foreach (var s in AssetDatabase.FindAssets("t:Scene")) {
+                string path = AssetDatabase.GUIDToAssetPath(s);
+                if (!path.Contains("/Editor/") && !path.Contains("/Patch/")) scenes.Add(path);
+              }
+              Debug.Log("[BUILD] Scenes=" + scenes.Count);
+              foreach (var s in scenes) Debug.Log("[BUILD] " + s);
+              Directory.CreateDirectory("build/Android");
+              var opts = new BuildPlayerOptions { scenes = scenes.ToArray(), locationPathName = "build/Android/game.apk", target = BuildTarget.Android, options = BuildOptions.None };
+              var report = BuildPipeline.BuildPlayer(opts);
+              Debug.Log("[BUILD] Result=" + report.summary.result + " errors=" + report.summary.totalErrors);
+              if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded) EditorApplication.Exit(1);
+            }
+          }
+          CSEOF
       - name: KillMosaic
         run: |
-          mkdir -p /tmp/kill
-          cd /tmp/kill
-          printf '%s\n' '<Project Sdk="Microsoft.NET.Sdk">' '<PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup>' '<ItemGroup><PackageReference Include="dnlib" Version="4.4.0"/><Compile Include="P.cs"/></ItemGroup>' '</Project>' > p.csproj
-          printf '%s\n' 'using System;using System.IO;using dnlib.DotNet;using dnlib.DotNet.Emit;' 'class P{static void Main(){string d="/root/AliceInCradle-Android/Assets/Managed/Assembly-CSharp.dll";if(!File.Exists(d)){Console.WriteLine("NO DLL");return;}var m=ModuleDefMD.Load(d);int c=0;foreach(var t in m.GetTypes())foreach(var me in t.Methods){if(!me.HasBody||me.Name.String.IndexOf("Mosaic",StringComparison.OrdinalIgnoreCase)<0)continue;Console.WriteLine("Kill: "+t.FullName+"."+me.Name);me.Body.Instructions.Clear();if(me.ReturnType.FullName=="System.Boolean")me.Body.Instructions.Add(Instruction.Create(OpCodes.Ldc_I4_0));me.Body.Instructions.Add(Instruction.Create(OpCodes.Ret));c++;}m.Write(d);Console.WriteLine("Total: "+c);}}' > P.cs
+          mkdir -p /tmp/kill && cd /tmp/kill
+          cat > p.csproj << 'X'
+          <Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup><ItemGroup><PackageReference Include="dnlib" Version="4.4.0"/><Compile Include="P.cs"/></ItemGroup></Project>
+          X
+          cat > P.cs << 'X'
+          using System;using System.IO;using dnlib.DotNet;using dnlib.DotNet.Emit;
+          class P{static void Main(){string d=Environment.GetEnvironmentVariable("GITHUB_WORKSPACE")+"/Assets/Managed/Assembly-CSharp.dll";if(!File.Exists(d)){Console.WriteLine("NO DLL");return;}var m=ModuleDefMD.Load(d);int c=0;foreach(var t in m.GetTypes())foreach(var me in t.Methods){if(!me.HasBody||me.Name.String.IndexOf("Mosaic",StringComparison.OrdinalIgnoreCase)<0)continue;Console.WriteLine("Kill: "+t.FullName+"."+me.Name);me.Body.Instructions.Clear();if(me.ReturnType.FullName=="System.Boolean")me.Body.Instructions.Add(Instruction.Create(OpCodes.Ldc_I4_0));me.Body.Instructions.Add(Instruction.Create(OpCodes.Ret));c++;}m.Write(d);Console.WriteLine("Total: "+c);}}
+          X
           dotnet run 2>&1 | tail -10
-          cd $GITHUB_WORKSPACE
-      - uses: game-ci/unity-builder@v4
-        timeout-minutes: 180
+      - name: Unity Build
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-        with:
-          targetPlatform: Android
-          unityVersion: 2020.3.25f1
-          androidExportType: androidPackage
-          androidTargetSdkVersion: 33
-          allowDirtyBuild: true
+        run: |
+          docker run --rm \
+            -v "$(pwd)":/project \
+            -e UNITY_LICENSE="$UNITY_LICENSE" \
+            -w /project \
+            unityci/editor:ubuntu-2020.3.25f1-android-3 \
+            bash -c 'mkdir -p /root/.local/share/unity3d/Unity && printf "%s" "$UNITY_LICENSE" > /root/.local/share/unity3d/Unity/Unity_lic.ulf && unity-editor -batchmode -nographics -quit -projectPath /project -logFile /dev/stdout -buildTarget Android -executeMethod BuildAndroid.Build'
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: AliceInCradle-APK
           path: build/Android/*.apk
+          if-no-files-found: warn
