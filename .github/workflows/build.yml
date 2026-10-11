@@ -95,14 +95,16 @@ jobs:
           dotnet run 2>&1 | tail -10
       - name: Unity Build
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         run: |
           docker run --rm \
             -v "$(pwd)":/project \
-            -e UNITY_LICENSE="$UNITY_LICENSE" \
+            -e UNITY_EMAIL="$UNITY_EMAIL" \
+            -e UNITY_PASSWORD="$UNITY_PASSWORD" \
             -w /project \
             unityci/editor:ubuntu-2020.3.25f1-android-3 \
-            bash -c 'mkdir -p /root/.local/share/unity3d/Unity && printf "%s" "$UNITY_LICENSE" > /root/.local/share/unity3d/Unity/Unity_lic.ulf && unity-editor -batchmode -nographics -quit -projectPath /project -logFile /dev/stdout -buildTarget Android -executeMethod BuildAndroid.Build; chmod -R a+rwX /project/build || true; chmod -R a+rwX /project/Library || true'
+            bash -c 'echo "User: $UNITY_EMAIL" && unity-editor -batchmode -nographics -quit -username "$UNITY_EMAIL" -password "$UNITY_PASSWORD" -projectPath /project -logFile /dev/stdout -buildTarget Android -executeMethod BuildAndroid.Build; chmod -R a+rwX /project/build || true; chmod -R a+rwX /project/Library || true'
       - name: Debug APK Location
         if: always()
         run: |
