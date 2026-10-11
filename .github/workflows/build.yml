@@ -103,6 +103,15 @@ jobs:
             -w /project \
             unityci/editor:ubuntu-2020.3.25f1-android-3 \
             bash -c 'mkdir -p /root/.local/share/unity3d/Unity && printf "%s" "$UNITY_LICENSE" > /root/.local/share/unity3d/Unity/Unity_lic.ulf && unity-editor -batchmode -nographics -quit -projectPath /project -logFile /dev/stdout -buildTarget Android -executeMethod BuildAndroid.Build; chmod -R a+rwX /project/build || true; chmod -R a+rwX /project/Library || true'
+      - name: Debug APK Location
+        if: always()
+        run: |
+          echo "=== all apk/aab ==="
+          find . -name "*.apk" -o -name "*.aab" 2>/dev/null | head
+          echo "=== build dir ==="
+          ls -laR build/ 2>/dev/null | head -40
+          echo "=== root ==="
+          ls -la | head -30
       - uses: actions/upload-artifact@v4
         if: always()
         with:
