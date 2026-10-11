@@ -102,10 +102,12 @@ jobs:
             -e UNITY_LICENSE="$UNITY_LICENSE" \
             -w /project \
             unityci/editor:ubuntu-2020.3.25f1-android-3 \
-            bash -c 'mkdir -p /root/.local/share/unity3d/Unity && printf "%s" "$UNITY_LICENSE" > /root/.local/share/unity3d/Unity/Unity_lic.ulf && unity-editor -batchmode -nographics -quit -projectPath /project -logFile /dev/stdout -buildTarget Android -executeMethod BuildAndroid.Build'
+            bash -c 'mkdir -p /root/.local/share/unity3d/Unity && printf "%s" "$UNITY_LICENSE" > /root/.local/share/unity3d/Unity/Unity_lic.ulf && unity-editor -batchmode -nographics -quit -projectPath /project -logFile /dev/stdout -buildTarget Android -executeMethod BuildAndroid.Build; chmod -R a+rwX /project/build || true; chmod -R a+rwX /project/Library || true'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: AliceInCradle-APK
-          path: build/Android/*.apk
+          path: |
+            build/**/*.apk
+            build/**/*.aab
           if-no-files-found: warn
